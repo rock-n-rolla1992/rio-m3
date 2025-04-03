@@ -27,6 +27,7 @@ UINT8 flag_up_front[4] = {0};
 UINT8 flag_low_front[4] = {0};
 UINT8 Relay_Target[3] = {0};
 UINT8 Relay_State[3] = {0};
+UINT8 Saved_Relay_Target[3] = {0};
 
 void main(void)
 {
@@ -66,7 +67,9 @@ void main(void)
     __delay_ms(100);
     for (UINT8 index = 0; index < 3; index++)
     {
-        Relay_Target[index] = Relay_State[index] = eeprom_read(RELAY_STATE_ADD + index);
+        Relay_Target[index] = Relay_State[index] = Saved_Relay_Target[index] = eeprom_read(RELAY_STATE_ADD + index);
+        //Relay_Target[index] = Relay_State[index] = Saved_Relay_Target[index] = 0;
+        //Relay_Target[index] = 1;
     }
     T0IE = 1;
 #if 0
@@ -86,7 +89,15 @@ void main(void)
     {
         if (input_state[3])
         {
-            Relay_Target[0] = Relay_Target[1] = Relay_Target[2] = 0;
+            if (flag_up_front[3])
+            {
+                Relay_Target[0] = Relay_Target[1] = Relay_Target[2] = 0;
+                eeprom_write(RELAY_STATE_ADD, 0);
+                eeprom_write(RELAY_STATE_ADD + 1, 0);
+                eeprom_write(RELAY_STATE_ADD + 2, 0);
+                flag_up_front[3] = 0;
+            }
+            flag_low_front[0] = flag_low_front[1] = flag_low_front[2] = 0;
         } else
         {
             for (UINT8 index = 0; index < 3; index++)
@@ -106,11 +117,13 @@ void interrupt func_interrupt(void)
 {
     static UINT8 index_input = 0;
     static UINT8 cnt_filt[4] = {0};
+    static UINT8 time_filt = (3000/(INTERRUPT_PERIOD*4));
     UINT8 temp = INPUT_(index_input);
     if (input_state[index_input] != temp)
     {
-        if (++cnt_filt[index_input] > (TIME_FILT / (INTERRUPT_PERIOD * 4)))
+        if (++cnt_filt[index_input] > time_filt)
         {
+            time_filt = (temp) ?(20000/(INTERRUPT_PERIOD*4)) : (3000/(INTERRUPT_PERIOD*4));
             input_state[index_input] = temp;
             flag_up_front[index_input] = temp;
             flag_low_front[index_input] = !temp;
@@ -125,10 +138,10 @@ void interrupt func_interrupt(void)
 #if 1
     static UINT8 index_relay = 0;
     static UINT16 timer_relay[3] = {0};
-    static UINT8 Saved_Relay_Target[3] = {0};
+
     if (Relay_Target[index_relay] != Relay_State[index_relay] || Saved_Relay_Target[index_relay] != Relay_State[index_relay])
     {
-        switch (index_relay)
+        switch (timer_relay[index_relay])
         {
             case 0:
                 if (Relay_Target[index_relay])
