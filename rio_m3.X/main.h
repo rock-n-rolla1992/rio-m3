@@ -9,15 +9,18 @@
 #include "Data_types.h"
 
 #define RELAY_STATE_ADD 32
-#define TIME_PULSE_RELAY 10000//мкс
-#define TIME_FILT 5000 //мкс
-#define INTERRUPT_PERIOD 128 //мкс
-#define INPUT_(x) ((x == 0)?RA1:(x == 1)?RA2:(x == 2)?RA4:RC0) 
-#define RELAY_ON_(x, state) ((x == 0)?LATA0 = state:(x == 1)?LATC5 = state:LATC1 = state)
-#define RELAY_OFF_(x, state) ((x == 0)?LATA5 = state:(x == 1)?LATC4 = state:LATC2 = state)
+#define TIME_PULSE_RELAY 11000//мкс
+//#define TIME_FILT 5000 //мкс
+#define INTERRUPT_PERIOD 2048 //мкс
+#define INPUT_(x) ((x == 0)?RA1:(x == 1)?RA2:(x == 2)?RC0:RA4) 
+#define RELAY_OFF_(x, state) ((x == 0)?LATA0 = state:(x == 1)?LATC5 = state:LATC1 = state)
+#define RELAY_ON_(x, state) ((x == 0)?LATA5 = state:(x == 1)?LATC4 = state:LATC2 = state)
+#define TIME_FILT_UP (7000 / (INTERRUPT_PERIOD))
+#define TIME_FILT_DOWN (25000 / (INTERRUPT_PERIOD))
+#define DEBUG_PIN LATC3
 
 
-#define _XTAL_FREQ 16000000 //для правильной работы задержки __delay_us()
+#define _XTAL_FREQ 1000000 //для правильной работы задержки __delay_us()
 
 typedef struct {
     UINT8 sw_on_by_sensor : 1;
