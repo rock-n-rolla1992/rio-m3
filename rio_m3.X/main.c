@@ -22,6 +22,8 @@
 #pragma config BORV = LO        // Brown-out Reset Voltage 
 #pragma config LVP = OFF        // Low-Voltage Programming Enable (High-voltage on MCLR/VPP must be used for programming)
 
+UINT8 cnt_time_2_sec = 0;
+
 UINT8 input_state[4] = {0};
 UINT8 flag_up_front[4] = {0};
 UINT8 flag_low_front[4] = {0};
@@ -33,7 +35,7 @@ void main(void)
 {
     __EEPROM_DATA('M', 'e', 'a', 'n', 'd', 'r', ' ', ' ');
     __EEPROM_DATA("R", "I", "O", " ", "M", "3", " ", " ");
-    __EEPROM_DATA("V", "1", ".", "0", "0", " ", " ", " ");
+    __EEPROM_DATA("V", "1", ".", "0", "1", " ", " ", " ");
 
     //ADCON1bits.ADFM = 1;
     //ADCON1bits.ADCS = 0b101;
@@ -90,17 +92,22 @@ void main(void)
     {
         if (input_state[3])
         {
-            if (flag_up_front[3])
+            if (cnt_time_2_sec > (2000000 / (INTERRUPT_PERIOD * 10)))
             {
-                Relay_Target[0] = Relay_Target[1] = Relay_Target[2] = 0;
-                eeprom_write(RELAY_STATE_ADD, 0);
-                eeprom_write(RELAY_STATE_ADD + 1, 0);
-                eeprom_write(RELAY_STATE_ADD + 2, 0);
-                flag_up_front[3] = 0;
+                if (flag_up_front[3])
+                {
+                    Relay_Target[0] = Relay_Target[1] = Relay_Target[2] = 0;
+                    eeprom_write(RELAY_STATE_ADD, 0);
+                    eeprom_write(RELAY_STATE_ADD + 1, 0);
+                    eeprom_write(RELAY_STATE_ADD + 2, 0);
+                    flag_up_front[3] = 0;
+                }
+                cnt_time_2_sec = 0;
             }
             flag_up_front[0] = flag_up_front[1] = flag_up_front[2] = 0;
         } else
         {
+            cnt_time_2_sec = 0;
             for (UINT8 index = 0; index < 3; index++)
             {
                 if (flag_up_front[index])
@@ -131,6 +138,15 @@ void interrupt func_interrupt(void)
 {
     DEBUG_PIN = 1;
     //static UINT8 index_input = 0;
+    {
+        static UINT8 cnt = 0;
+        if (++cnt >= 10)
+        {
+            cnt_time_2_sec++;
+            cnt = 0;
+        }
+    }
+
     static UINT8 cnt_filt[4] = {0};
     static UINT8 time_filt[4] = {TIME_FILT_UP, TIME_FILT_UP, TIME_FILT_UP, TIME_FILT_UP};
     for (UINT8 index_input = 0; index_input < 4; index_input++)
@@ -185,7 +201,7 @@ void interrupt func_interrupt(void)
         }
     }
     //if (++index_relay >= 3)
-      //  index_relay = 0;
+    //  index_relay = 0;
 #endif
     T0IF = 0;
     DEBUG_PIN = 0;
